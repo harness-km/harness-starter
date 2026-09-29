@@ -1,0 +1,25 @@
+title: "[Week NN] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: "Never paste an API key, a screenshot showing one, or real company data. If you already did, rotate the key first."
+  - type: input
+    id: week
+    attributes: { label: Week and step, placeholder: "Week 3, step 3" }
+    validations: { required: true }
+  - type: textarea
+    id: ran
+    attributes: { label: What I ran, description: The cell or command, render: python }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: What I expected }
+    validations: { required: true }
+  - type: textarea
+    id: error
+    attributes: { label: The full error, render: text }
+    validations: { required: true }
+  - type: input
+    id: run
+    attributes: { label: Run ID (from Week 8 on), placeholder: optional }

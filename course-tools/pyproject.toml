@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "course-tools"
+version = "1.0.0"
+description = "Helpers for the Agent Harness Engineering course labs (dataset, fake model, self-checks, resource meter)"
+requires-python = ">=3.10"
+dependencies = [
+  "anthropic==1.9.0",
+  "langchain==1.4.3",
+  "langchain-core==1.6.5",
+  "langchain-anthropic==1.7.4",
+  "langgraph==1.2.12",
+  "pydantic>=2.11,<3",
+  "pymupdf==1.28.2",
+  "reportlab>=4.4,<6",
+  "pillow>=10",
+  "pandas>=2.2",
+  "pyyaml>=6",
+]
+
+[tool.setuptools.packages.find]
+include = ["course_tools*"]
