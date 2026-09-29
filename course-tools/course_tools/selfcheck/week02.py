@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from ..config import data_dir
 from . import expect, need
 
-FIVE = ["INV-A", "INV-04", "INV-05", "INV-06", "INV-07"]
+SIX = ["INV-A", "INV-04", "INV-05", "INV-06", "INV-07", "INV-24"]
 
 
 def _truth(inv_id):
@@ -28,34 +28,41 @@ def _raises_validation(fn):
 
 
 def schema_accepts_valid_invoice(ns):
-    """Invoice accepts a correct invoice (INV-A)"""
+    """Invoice accepts correct invoices in USD (INV-A) and INR (INV-10)"""
     Invoice = need(ns, "Invoice", "step 2")
     inv = Invoice.model_validate(_truth("INV-A")["invoice"])
-    expect(abs(inv.total - 92040) < 0.01, "INV-A should validate with total 92,040.")
+    expect(abs(inv.total - 3360) < 0.01 and inv.currency == "USD", "INV-A should validate: USD, total 3,360.00.")
+    inr = Invoice.model_validate(_truth("INV-10")["invoice"])
+    expect(inr.currency == "INR" and [t.kind for t in inr.tax_lines] == ["IGST"],
+           "INV-10 should validate: INR, one IGST tax line.")
 
 
 def schema_validators_catch_errors(ns):
-    """The three validators catch line arithmetic, totals and a bad GSTIN"""
+    """The three validators catch line arithmetic, totals and a bad tax ID"""
     Invoice = need(ns, "Invoice", "step 2")
     good = _truth("INV-A")["invoice"]
     bad_line = copy.deepcopy(good)
-    bad_line["lines"][0]["quantity"] = 12
+    bad_line["lines"][0]["quantity"] = 3
     expect(_raises_validation(lambda: Invoice.model_validate(bad_line)),
-           "Quantity 12 × 450 ≠ 54,000 should fail the line validator.")
+           "Quantity 3 × $96.00 ≠ $2,880.00 should fail the line validator.")
     bad_total = copy.deepcopy(good)
-    bad_total["total"] = 95000
+    bad_total["total"] = 3500
     expect(_raises_validation(lambda: Invoice.model_validate(bad_total)),
-           "A total that is not taxable value + tax should fail.")
-    bad_gstin = copy.deepcopy(good)
-    bad_gstin["supplier_gstin"] = "29-NOT-A-GSTIN"
-    expect(_raises_validation(lambda: Invoice.model_validate(bad_gstin)), "A malformed GSTIN should fail.")
+           "A total that is not subtotal + tax should fail.")
+    bad_tax = copy.deepcopy(_truth("INV-10")["invoice"])
+    bad_tax["tax_lines"][0]["amount"] += 50
+    expect(_raises_validation(lambda: Invoice.model_validate(bad_tax)),
+           "An INR invoice whose IGST does not add up to the total should fail.")
+    bad_id = copy.deepcopy(good)
+    bad_id["supplier_tax_id"] = "13-NOT-AN-EIN"
+    expect(_raises_validation(lambda: Invoice.model_validate(bad_id)), "A malformed tax ID should fail.")
 
 
 def read_invoice_transcribes(ns):
     """read_invoice() returns the invoice text"""
     read_invoice = need(ns, "read_invoice", "step 1")
     text = read_invoice(_path("INV-A"))
-    expect(isinstance(text, str) and "SBP/26-27/0412" in text, "The transcription should contain INV-A's number.")
+    expect(isinstance(text, str) and "PBC-10412" in text, "The transcription should contain INV-A's number.")
 
 
 def read_invoice_fails_on_truncation(ns):
@@ -71,12 +78,12 @@ def read_invoice_fails_on_truncation(ns):
     raise AssertionError("A two-page invoice read with max_tokens=200 returned normally: page 2 was silently lost.")
 
 
-def five_invoices_valid_or_named_error(ns):
-    """Each of the five invoices returns a correct Invoice or a named validation error"""
+def six_invoices_valid_or_named_error(ns):
+    """Each of the six invoices returns a correct Invoice or a named validation error"""
     read_invoice = need(ns, "read_invoice", "step 1")
     structure_invoice = need(ns, "structure_invoice", "step 3")
     problems = []
-    for inv_id in FIVE:
+    for inv_id in SIX:
         truth = _truth(inv_id)["invoice"]
         try:
             inv = structure_invoice(read_invoice(_path(inv_id)))
@@ -97,5 +104,21 @@ def five_invoices_valid_or_named_error(ns):
     expect(not problems, "; ".join(problems))
 
 
+def currency_check_flags_disagreement(ns):
+    """check_currency() trusts matching invoices and flags a '$' that is really Canadian"""
+    Invoice = need(ns, "Invoice", "step 2")
+    check_currency = need(ns, "check_currency", "step 3b")
+    for inv_id in ["INV-A", "INV-05", "INV-20", "INV-40"]:
+        r = _truth(inv_id)
+        msg = check_currency(Invoice.model_validate(r["reading"]), "\n".join(r["transcription"]))
+        expect(msg is None, f"{inv_id}: the extracted currency matches the document, but check_currency said: {msg}")
+    r = _truth("INV-24")
+    msg = check_currency(Invoice.model_validate(r["reading"]), "\n".join(r["transcription"]))
+    expect(bool(msg), "INV-24 was read as USD, but its GST/HST details point to CAD: check_currency should flag it.")
+    mixed = Invoice.model_validate(_truth("INV-A")["reading"])
+    expect(bool(check_currency(mixed, "Total due (US$): 3,360.00\nTotal (EUR): 3,100.00")),
+           "A document showing both US$ and EUR should be flagged.")
+
+
 CHECKS = [schema_accepts_valid_invoice, schema_validators_catch_errors, read_invoice_transcribes,
-          read_invoice_fails_on_truncation, five_invoices_valid_or_named_error]
+          read_invoice_fails_on_truncation, six_invoices_valid_or_named_error, currency_check_flags_disagreement]

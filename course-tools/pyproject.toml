@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "course-tools"
-version = "1.0.0"
+version = "1.1.0"
 description = "Helpers for the Agent Harness Engineering course labs (dataset, fake model, self-checks, resource meter)"
 requires-python = ">=3.10"
 dependencies = [

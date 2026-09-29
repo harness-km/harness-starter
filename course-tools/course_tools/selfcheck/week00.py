@@ -49,9 +49,12 @@ def dataset_ok(ns):
     try:
         n_sup = con.execute("select count(*) from suppliers").fetchone()[0]
         n_po = con.execute("select count(*) from purchase_orders").fetchone()[0]
+        currencies = {r[0] for r in con.execute("select distinct currency from purchase_orders")}
     finally:
         con.close()
-    expect(n_sup == 8 and n_po >= 60, f"Unexpected dataset contents ({n_sup} suppliers, {n_po} POs).")
+    expect(n_sup == 14 and n_po >= 60 and {"USD", "INR"} <= currencies,
+           f"Unexpected dataset contents ({n_sup} suppliers, {n_po} POs, currencies {sorted(currencies)}). "
+           "An older dataset may be cached: delete the data folder and run the bootstrap cell again.")
     pdfs = list((d / "invoices").glob("*.pdf"))
     expect(len(pdfs) == 40, f"Expected 40 invoice PDFs, found {len(pdfs)}.")
 

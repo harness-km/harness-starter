@@ -16,11 +16,12 @@ def _run(ns, inv_id):
 
 
 def inv_a_end_to_end(ns):
-    """INV-A runs end to end: supplier S01, PO-1001, goods receipt 120 and 80"""
+    """INV-A runs end to end: supplier S01, PO-1001, goods receipt 30 and 40"""
     out = _run(ns, "INV-A")
     text = json.dumps({k: out.get(k) for k in ("supplier", "purchase_order", "goods_receipt")}, default=str)
     expect("S01" in text and "PO-1001" in text, f"Expected supplier S01 and PO-1001 in the final state: {text[:300]}")
-    expect("120" in text and "80" in text, "Expected the goods receipt quantities (120, 80) in the final state.")
+    expect('"received": 30' in text and '"received": 40' in text,
+           "Expected the goods receipt quantities (30, 40) in the final state.")
     expect(out.get("status") == "ready_for_matching", f"status should be 'ready_for_matching', got {out.get('status')!r}")
 
 

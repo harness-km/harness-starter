@@ -12,11 +12,12 @@ def _db():
 
 
 def goods_receipt_matches(ns):
-    """get_goods_receipt('PO-1001') returns received quantities per line (120 and 80)"""
+    """get_goods_receipt('PO-1001') returns received quantities per line (30 and 40)"""
     fn = need(ns, "get_goods_receipt", "step 2")
     out = fn("PO-1001")
-    text = json.dumps(out, default=str)
-    expect("120" in text and "80" in text, f"Expected received quantities 120 and 80 in the result, got: {text[:300]}")
+    received = [ln.get("received") for ln in out.get("lines", [])] if isinstance(out, dict) else []
+    expect(received == [30, 40], f"Expected received quantities [30, 40] for PO-1001's two lines, got: "
+                                 f"{json.dumps(out, default=str)[:300]}")
 
 
 def unknown_po_is_explicit(ns):
@@ -41,13 +42,27 @@ def injection_is_refused(ns):
 
 
 def supplier_lookup_works(ns):
-    """get_supplier() finds S01 by ID and by GSTIN"""
+    """get_supplier() finds a supplier by ID, by EIN (US) and by GSTIN (India)"""
     fn = need(ns, "get_supplier", "step 2")
     con = _db()
-    gstin = con.execute("select gstin from suppliers where supplier_id='S01'").fetchone()[0]
+    ein = con.execute("select tax_id from suppliers where supplier_id='S01'").fetchone()[0]
+    gstin = con.execute("select tax_id from suppliers where supplier_id='S07'").fetchone()[0]
     con.close()
-    a, b = fn("S01"), fn(gstin)
-    expect("Sahyadri" in json.dumps(a) and "Sahyadri" in json.dumps(b), "get_supplier should accept 'S01' or its GSTIN.")
+    a, b, c = fn("S01"), fn(ein), fn(gstin)
+    expect("Pinecrest" in json.dumps(a) and "Pinecrest" in json.dumps(b),
+           "get_supplier should accept 'S01' or its EIN.")
+    expect("Sahyadri" in json.dumps(c), "get_supplier should also accept an Indian supplier's GSTIN.")
+    expect("USD" in json.dumps(a) and "INR" in json.dumps(c), "Return each supplier's currency.")
+
+
+def purchase_order_has_currency(ns):
+    """get_purchase_order() returns the PO's currency and buyer company"""
+    fn = need(ns, "get_purchase_order", "step 2")
+    us, india = fn("PO-1001"), fn("PO-1003")
+    expect(us.get("currency") == "USD" and us.get("entity_id") == "US",
+           f"PO-1001 is a USD order for the US company; got currency={us.get('currency')}, entity_id={us.get('entity_id')}.")
+    expect(india.get("currency") == "INR" and india.get("entity_id") == "IN",
+           f"PO-1003 is an INR order for the Indian company; got currency={india.get('currency')}.")
 
 
 def loop_stops_with_report(ns):
@@ -76,4 +91,5 @@ def loop_answers_question(ns):
 
 
 CHECKS = [goods_receipt_matches, unknown_po_is_explicit, injection_is_refused, supplier_lookup_works,
+          purchase_order_has_currency,
           loop_stops_with_report, loop_answers_question]

@@ -25,9 +25,9 @@ def corrections_touch_only_flagged(ns):
     corrected = json.loads(json.dumps(_gt("INV-A")["invoice"]))
     corrected["supplier_name"] = "SOMETHING ELSE"
     merged = apply_corrections(draft, corrected, ["lines[0]"])
-    expect(merged["lines"][0]["quantity"] == 120, "The flagged line should take the corrected quantity (120).")
+    expect(merged["lines"][0]["quantity"] == 30, "The flagged line should take the corrected quantity (30).")
     expect(merged["supplier_name"] == draft["supplier_name"], "An unflagged field (supplier_name) was changed.")
-    expect(draft["lines"][0]["quantity"] == 12, "apply_corrections must not modify the draft passed in; copy it.")
+    expect(draft["lines"][0]["quantity"] == 3, "apply_corrections must not modify the draft passed in; copy it.")
 
 
 def python_checks_flag_arithmetic(ns):
@@ -35,7 +35,8 @@ def python_checks_flag_arithmetic(ns):
     python_checks = need(ns, "python_checks", "step 2")
     flags = python_checks(_fixture("misread_quantity"))
     expect(any(f.startswith("lines[0]") for f in flags), f"Expected a flag for lines[0], got {flags}")
-    expect(python_checks(_gt("INV-A")["invoice"]) == [], "A correct invoice should produce no flags.")
+    expect(python_checks(_gt("INV-A")["invoice"]) == [], "A correct USD invoice should produce no flags.")
+    expect(python_checks(_gt("INV-10")["invoice"]) == [], "A correct INR invoice (INV-10) should produce no flags.")
 
 
 def _result(ns, state):
@@ -57,7 +58,7 @@ def misread_is_corrected(ns):
     """The misread quantity is corrected and re-approved (was_corrected)"""
     res = _result(ns, {"raw_text": _raw("INV-A"), "draft": _fixture("misread_quantity")})
     expect(res.status == "ACCEPTED" and res.was_corrected, f"Expected ACCEPTED with was_corrected; got {res.status}")
-    expect(res.invoice.lines[0].quantity == 120, "Line 1 quantity should be corrected to 120.")
+    expect(res.invoice.lines[0].quantity == 30, "Line 1 quantity should be corrected to 30.")
 
 
 def missed_line_is_recovered(ns):
