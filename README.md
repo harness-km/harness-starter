@@ -1,6 +1,6 @@
 # Agent Harness Engineering — starter repository
 
-Your copy of this repository is where your course work lives. Course site: https://course.krishnamohan.co
+Your copy of this repository is where your course work lives. Course site: https://harness.krishnamohan.co
 
 ## Start here (Week 0)
 
