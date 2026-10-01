@@ -1,6 +1,6 @@
 {
   "name": "Agent Harness Engineering",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
   "hostRequirements": { "cpus": 2 },
   "postCreateCommand": "make setup && make data",
   "customizations": {
